@@ -3,6 +3,9 @@
 
 > **Uncovering the story behind 100K+ transactions on Brazil's largest e-commerce marketplace — from raw data to boardroom-ready insights.**
 
+## 🔗 Live Dashboard
+👉 [View Interactive Power BI Dashboard](https://app.powerbi.com/view?r=eyJrIjoiZjFkZjc5YTEtOTg2OS00OTllLWJkMDYtMTAzNDU3MTZjMDY3IiwidCI6IjVlNWNiMWJhLTdmYjUtNDcyMi05OWVhLWZlZDg3MDRkOWFiYSJ9&pageName=d6e8881202963d2a1a16)
+
 ---
 
 ## 📌 Table of Contents

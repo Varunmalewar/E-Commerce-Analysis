@@ -1,35 +1,230 @@
-# Olist E-commerce Data Analysis
+# 🛒 Olist E-Commerce Analytics
+### End-to-End Business Intelligence Analysis | Python · SQL Server · Power BI
 
-End-to-end data cleaning and business intelligence analysis of the Olist Brazilian e-commerce platform. Covers 9 relational datasets, comprehensive data preprocessing, and 14 analytical requirements for Power BI dashboard visualization.
+> **Uncovering the story behind 100K+ transactions on Brazil's largest e-commerce marketplace — from raw data to boardroom-ready insights.**
 
-## Table of Contents
+---
 
-- [Project Overview](#project-overview)
-- [Directory Structure](#directory-structure)
-- [Datasets](#datasets)
-- [Data Cleaning Pipeline](#data-cleaning-pipeline)
-- [Client Requirements](#client-requirements)
-- [Tools & Technologies](#tools--technologies)
-- [How to Run](#how-to-run)
+## 📌 Table of Contents
+1. [Project Overview](#project-overview)
+2. [Dataset Overview](#dataset-overview)
+3. [Data Architecture](#data-architecture)
+4. [Data Cleaning & Transformation](#data-cleaning--transformation)
+5. [Power BI Dashboard](#power-bi-dashboard)
+6. [Key Business Insights](#key-business-insights)
+7. [Tools & Technologies](#tools--technologies)
+8. [How to Run](#how-to-run)
+9. [Directory Structure](#directory-structure)
 
-## Project Overview
+---
 
-This project analyzes e-commerce transaction data from Olist, Brazil's largest department store marketplace. The workflow spans from raw data extraction via SQL Server through Python-based cleaning to final export for Power BI dashboarding. The analysis covers customer behavior, product performance, seller metrics, fulfillment efficiency, and promotional simulations.
+## 🔍 Project Overview
 
-**Key Metrics:**
-- 99,441 orders across 96,096 unique customers
-- 32,951 products in 73 categories
-- 3,095 sellers
-- 1M+ geolocation records
+Olist is Brazil's largest department store marketplace that connects small businesses to major retail channels. This project performs a comprehensive end-to-end analysis of Olist's transaction data spanning **September 2016 to October 2018** — covering the complete journey from raw SQL extraction and Python-based data cleaning to an interactive 5-page Power BI dashboard.
 
-## Directory Structure
+The analysis was driven by **14 client-defined business requirements** addressing four core pillars:
+
+| Pillar | Focus |
+|---|---|
+| 📊 Executive Performance | Revenue, orders, payment methods, geographic distribution |
+| 👥 Customer Behavior | Churn analysis, retention patterns, seller performance |
+| 📦 Product Intelligence | Category rankings, market basket analysis, seasonality |
+| 💰 Profitability | Pricing impact, BOGO simulation, new product performance |
+
+---
+
+## 📦 Dataset Overview
+
+The dataset consists of **9 relational CSV files** sourced from SQL Server database `campusx_project2`:
+
+| Dataset | Rows | Description |
+|---|---|---|
+| `olist_orders_dataset` | 99,441 | Order lifecycle with timestamps and status |
+| `olist_order_items_dataset` | ~112,000 | Products per order, price, freight value |
+| `olist_customers_dataset` | 99,441 | Customer ID, unique ID, location |
+| `olist_products_dataset` | 32,951 | Category, dimensions, photo count |
+| `olist_sellers_dataset` | 3,095 | Seller ID, location details |
+| `olist_order_payments_dataset` | 103,886 | Payment type, installments, value |
+| `olist_order_reviews_dataset` | ~99,000 | Review scores and comments |
+| `olist_geolocation_dataset` | 1,000,163 | Zip code latitude/longitude |
+| `product_category_name_translation` | 71 | Portuguese → English category mapping |
+
+**Scale:**
+- 🛍️ **99,441** total orders
+- 👥 **96,096** unique customers
+- 🏷️ **73** product categories
+- 🏪 **3,095** sellers
+- 📍 **1M+** geolocation records
+
+---
+
+## 🗄️ Data Architecture
+
+```
+Customers ──1:1──> Orders ──1:N──> Order Items ──N:1──> Products
+                                              ──N:1──> Sellers
+                   Orders ──1:N──> Payments
+                   Orders ──1:N──> Reviews
+                   Orders ──N:1──> Geolocation (via zip)
+```
+
+---
+
+## 🔧 Data Cleaning & Transformation
+
+All cleaning was performed in Python using Pandas. Raw data was extracted from SQL Server via `pyodbc` and exported as `.xls` files for Power BI consumption.
+
+### 1. Customers Table
+- Applied `str.title()` normalization to city names
+- Unicode normalization using `unidecode` — removed Portuguese accents for consistency
+- Stripped non-alphabetic characters using regex `[^A-Za-z\s]`
+- **Result:** 99,441 rows · 96,096 unique customers · 3,345 repeat customers identified
+
+### 2. Geolocation Table
+- Removed duplicates: **1,000,163 → 738,009 rows**
+- Dropped `geolocation_lat` and `geolocation_lng` (city-level granularity sufficient for Power BI)
+- Unicode normalization reduced unique city count: **8,011 → 5,969**
+- Removed numbers, special characters, apostrophes and asterisks from city names
+- Manual standardization: fixed multi-variant spellings of `"Sao Joao Do Pau D Alho"`
+- Final aggressive deduplication: **738,009 → 19,612 rows**
+
+### 3. Products Table
+- Dropped 6 non-essential columns: `product_name_lenght`, `product_description_lenght`, `product_weight_g`, `product_length_cm`, `product_height_cm`, `product_width_cm`
+- Left joined with category translation table for English category names
+- Manually mapped 2 unmapped categories:
+  - `pc_gamer` → `computers`
+  - `portateis_casa_forno_e_cafe` → `small_appliances_home_oven_and_coffee`
+- **Final columns retained:** `product_id`, `product_category_name`, `product_photos_qty`
+
+### 4. Sellers Table
+- Applied `str.title()` to city names
+- Removed non-alphabetic characters
+- Verified zero duplicate `seller_id` values
+
+### 5. Orders Table
+- Enforced logical timestamp sequence validation:
+  - `order_approved_at >= order_purchase_timestamp`
+  - `order_delivered_carrier_date >= order_approved_at`
+- Removed 6 canceled orders with anomalous non-null delivery dates
+- **Result:** 99,441 → **96,279 clean rows**
+
+### 6. Payments Table
+- Dropped `payment_sequential` and `payment_installments` columns
+- Aggregated `payment_value` by `order_id` and `payment_type` using `sum()`
+- **Result:** 103,886 → **101,686 rows**
+
+### 7. Reviews & Order Items
+- Cleaned and standardized — exported to `.xls` for Power BI
+
+---
+
+## 📊 Power BI Dashboard
+
+The final dashboard spans **5 interactive pages** with 20+ DAX measures, cross-page navigation, and conditional formatting:
+
+| Page | Description |
+|---|---|
+| 🏠 **Home** | Project introduction, problem statement, dataset overview, navigation |
+| 📊 **Executive Overview** | KPI cards, revenue trend, payment split, category revenue, Brazil map |
+| 👥 **Customer Analytics** | Churn by year, order frequency, review distribution, underperforming sellers |
+| 📦 **Product Intelligence** | Category ranking, MBA matrix, seasonality, price distribution |
+| 💰 **Profitability** | New product performance, BOGO simulation, revenue split |
+
+**Key DAX techniques used:**
+`AVERAGEX` · `RANKX` · `TREATAS` · `EXCEPT` · `TOPN` · `KEEPFILTERS` · `SUMX` · `DATEADD` · `DATEDIFF` · `ALLEXCEPT` · `SELECTEDVALUE`
+
+---
+
+## 💡 Key Business Insights
+
+### 1. 🔴 Logistics Failure is the Primary Driver of Customer Churn
+
+> Identified that **97% of Olist customers placed only 1 order**, indicating near-zero retention. Traced the root cause to an **average 262-hour (11-day) delivery time**, which correlated with a **1.4-point drop in review scores** for late deliveries (4.2 on-time vs 2.8 late). This suggests that logistics inefficiency — not product quality or pricing — is the primary churn driver, and that reducing delivery time is the single highest-leverage retention intervention available to the business.
+
+**Data evidence:**
+- 97% single-purchase customers
+- On-time delivery avg review: **4.2 / 5.0**
+- Late delivery avg review: **2.8 / 5.0**
+- Carrier-to-customer stage = **76% of total fulfillment time**
+
+---
+
+### 2. 🟡 Revenue Concentration Risk & Untapped Cross-Sell Opportunity
+
+> Discovered that **watches_gifts and health_beauty together contribute 18.3% of total platform revenue** despite Brazil's diverse 71-category marketplace — creating significant revenue concentration risk. Further analysis via Market Basket Analysis revealed that **computers + computers_accessories** had a Lift of **9.65** (bought together 9.65× more than by chance), signaling a high-confidence cross-sell opportunity. Bundling these categories or surfacing recommendation logic could reduce dependency on top 2 categories while growing mid-tier category revenue.
+
+**Data evidence:**
+- Top 2 categories = **18.3%** of total revenue
+- Computers + accessories Lift: **9.65** (highest in dataset)
+- baby + cool_stuff: **14 co-purchase pairs** (highest volume cross-sell)
+
+---
+
+### 3. 🟢 BOGO Promotion Viability Supported by Payment Concentration
+
+> Simulated a **BOGO promotion on the top 10 products by order volume** and projected a **+R$869K revenue impact (+20.12% uplift)** — based on the assumption that doubling quantity sold with every second unit free results in 1.5× effective revenue. This finding is further supported by the discovery that **78.6% of all transactions relied solely on credit cards**, indicating that customers are already comfortable with higher-value transactions. Volume-based promotions tied to credit card payment flexibility could simultaneously improve revenue, payment diversification, and customer engagement.
+
+**Data evidence:**
+- BOGO simulated revenue uplift: **+R$869,000 (+20.12%)**
+- Credit card transaction share: **78.6%**
+- Boleto (cash alternative): only **17.2%**
+
+---
+
+## 🛠️ Tools & Technologies
+
+| Tool | Purpose |
+|---|---|
+| **Python 3.x** | Core data cleaning and transformation |
+| **Pandas** | Data manipulation, merging, aggregation |
+| **NumPy** | Numerical operations |
+| **PyODBC** | SQL Server database connectivity |
+| **Unidecode** | Unicode/accent normalization |
+| **Regex (re)** | Pattern matching and text cleaning |
+| **SQL Server** | Raw data source (`campusx_project2`) |
+| **Jupyter Notebook** | Interactive development environment |
+| **Power BI Desktop** | Dashboard and visualization layer |
+| **DAX** | Business measures and KPI calculations |
+| **Power Query (M)** | In-Power BI transformations |
+| **Anaconda** | Python distribution and environment |
+
+---
+
+## ▶️ How to Run
+
+### Prerequisites
+- Python 3.x with Anaconda
+- SQL Server with ODBC Driver 17
+- Database `campusx_project2` loaded with raw Olist datasets
+
+### Step 1 — Configure Database Connection
+Open `cleaned/Project2.1 (1).ipynb` and update:
+```python
+server = r"YOUR_SERVER_NAME\SQLEXPRESS"
+database = "campusx_project2"
+```
+
+### Step 2 — Install Dependencies
+```bash
+pip install pandas numpy pyodbc unidecode openpyxl
+```
+
+### Step 3 — Run Notebook
+Open Jupyter Notebook and execute all cells sequentially. 8 cleaned `.xls` files will be generated in the `cleaned/` directory.
+
+### Step 4 — Load into Power BI
+Import the 8 cleaned `.xls` files into Power BI Desktop and connect relationships as per the data architecture above.
+
+---
+
+## 📁 Directory Structure
 
 ```
 Final lap/
 ├── README.md
-├── client requirement.docx           # Client requirements document (14 analyses)
-├── datasets/                         # Raw source data
-│   ├── Olist.Data.Dictionary.2.pdf   # Data dictionary
+├── client requirement.docx
+├── datasets/
+│   ├── Olist.Data.Dictionary.2.pdf
 │   ├── product_category_name_translation.csv
 │   ├── olist_customers_dataset.csv
 │   ├── olist_geolocation_dataset.csv
@@ -39,9 +234,8 @@ Final lap/
 │   ├── olist_order_reviews_dataset.csv
 │   ├── olist_products_dataset.csv
 │   └── olist_sellers_dataset.csv
-└── cleaned/                          # Cleaned outputs
-    ├── Project2.1 (1).ipynb          # Jupyter notebook (full cleaning code)
-    ├── Project2.1 (1).md             # Markdown export of notebook
+└── cleaned/
+    ├── Project2.1 (1).ipynb
     ├── cleaned_customers.xls
     ├── cleaned_geo.xls
     ├── cleaned_orders.xls
@@ -52,147 +246,14 @@ Final lap/
     └── cleaned_seller.xls
 ```
 
-## Datasets
+---
 
-| Dataset | Rows | Columns | Description |
-|---------|------|---------|-------------|
-| Customers | 99,441 | 5 | Customer ID, unique ID, zip, city, state |
-| Geolocation | 1,000,163 | 5 | Zip code lat/lng, city, state |
-| Orders | 99,441 | 8 | Order lifecycle timestamps and status |
-| Order Items | ~112K | 7 | Products per order, price, freight |
-| Order Payments | 103,886 | 5 | Payment type, installments, value |
-| Order Reviews | ~99K | 7 | Review scores and comments |
-| Products | 32,951 | 9 | Category, dimensions, photos count |
-| Sellers | 3,095 | 4 | Seller ID, zip, city, state |
-| Category Translation | 71 | 2 | Portuguese to English category names |
-
-### Entity Relationships
-
-```
-Customers ──1:1──> Orders ──1:N──> Order Items ──N:1──> Products
-                                              ──N:1──> Sellers
-                  Orders ──1:N──> Order Payments
-                  Orders ──1:N──> Order Reviews
-```
-
-## Data Cleaning Pipeline
-
-### 1. Customers Table
-- Applied `str.title()` to city names
-- Unicode normalization using `unidecode` (removed Portuguese accents)
-- Removed non-alphabetic characters using regex `[^A-Za-z\s]`
-- Result: 99,441 rows, 96,096 unique customer IDs, 3,345 repeat customers
-
-### 2. Geolocation Table
-- Removed duplicates: 1,000,163 → 738,009 rows
-- Dropped `geolocation_lat` and `geolocation_lng` columns (city column sufficient for Power BI)
-- Unicode normalization: unique cities reduced from 8,011 → 5,969
-- Removed numbers and special characters from city names
-- Removed apostrophes, asterisks, periods from city values
-- Manual fix: standardized "Sao Joao Do Pau D Alho" variants
-- Final aggressive deduplication: 738,009 → 19,612 rows
-
-### 3. Products Table
-- Dropped 6 unnecessary columns: `product_name_lenght`, `product_description_lenght`, `product_weight_g`, `product_length_cm`, `product_height_cm`, `product_width_cm`
-- Left joined with category translation table to get English names
-- Manually mapped 2 missing categories:
-  - `pc_gamer` → `computers`
-  - `portateis_casa_forno_e_cafe` → `small_appliances_home_oven_and_coffee`
-- Dropped redundant join columns after merge
-- Final columns: `product_id`, `product_category_name`, `product_photos_qty`
-
-### 4. Sellers Table
-- Applied `str.title()` to city names
-- Removed non-alphabetic characters from city names
-- Verified zero duplicates on `seller_id` and full row
-
-### 5. Orders Table
-- Filtered invalid timestamp sequences:
-  - `order_approved_at` must be >= `order_purchase_timestamp`
-  - `order_delivered_carrier_date` must be >= `order_approved_at`
-- Reduced from 99,441 → 96,279 rows
-- Removed 6 canceled orders with non-null delivery dates (data anomaly)
-- Final status distribution: `delivered`, `shipped`, `canceled`
-
-### 6. Payments Table
-- Dropped `payment_sequential` and `payment_installments` columns
-- Aggregated `payment_value` by `order_id` and `payment_type` using `sum()`
-- Reduced from 103,886 → 101,686 rows
-
-### 7. Reviews Table
-- Cleaned and exported to `cleaned_reviews.xls`
-
-### 8. Order Items Table
-- Cleaned and exported to `cleaned_olist_items.xls`
-
-## Client Requirements
-
-The project delivers 14 analytical requirements for Power BI dashboard:
-
-| # | Analysis | Description |
-|---|----------|-------------|
-| 1 | General KPIs | Total customers, orders, sales, avg order value, inactive customers (12 months) |
-| 2 | Category Contribution | Percentage share with color coding: green (>5%), cream (3-5%), yellow (<3%) |
-| 3 | Customer Churn | Year-over-year identification of customers who stopped purchasing |
-| 4 | Photos vs Sales | Correlation between product photo count and sales quantity |
-| 5 | Market Basket Analysis | Product pairs frequently purchased together in the same order |
-| 6 | New Product Performance | Last 6 months category sales and orders for new launches |
-| 7 | Seasonality | Monthly sales patterns to identify demand cycles |
-| 8 | Price Change Impact | Average price change per category and effect on sales behavior |
-| 9 | BOGO Simulation | "Buy One Get One Free" impact on profit margin for top 10 products |
-| 10 | Payment Type Analysis | Sales distribution across payment methods |
-| 11 | Delivery vs Reviews | Average review score: on-time vs late deliveries |
-| 12 | Fulfillment Timing | Average hours per order stage (purchase → approval → carrier → delivery) |
-| 13 | Category Maturity | First 90 days revenue vs most recent 90 days per category |
-| 14 | Underperforming Sellers | High-rated sellers (>4.5) with <10% local (in-state) sales |
-
-## Tools & Technologies
-
-| Tool | Purpose |
-|------|---------|
-| Python 3.x | Core programming language |
-| Pandas | Data manipulation and analysis |
-| NumPy | Numerical operations |
-| PyODBC | SQL Server database connectivity |
-| Unidecode | Unicode text normalization |
-| Regex (re) | Pattern matching and text cleaning |
-| SQL Server | Data source (database: `campusx_project2`) |
-| Jupyter Notebook | Interactive development environment |
-| Power BI | Dashboard visualization (downstream) |
-| Anaconda | Python distribution and package management |
-
-### Key Python Libraries
-
-```
-pip install pandas numpy pyodbc unidecode openpyxl
-```
-
-## How to Run
-
-1. **Prerequisites**
-   - Python 3.x with Anaconda
-   - SQL Server with ODBC Driver 17 installed
-   - Database `campusx_project2` loaded with raw Olist datasets
-
-2. **Configure Database Connection**
-   Update the server name in the notebook:
-   ```python
-   server = r"YOUR_SERVER_NAME"
-   database = "campusx_project2"
-   ```
-
-3. **Execute Notebook**
-   Open `cleaned/Project2.1 (1).ipynb` in Jupyter Notebook and run all cells sequentially.
-
-4. **Cleaned Output**
-   8 cleaned `.xls` files will be generated in the `cleaned/` directory, ready for Power BI import.
-
-## Data Dictionary Reference
+## 📎 Data Dictionary Reference
 
 See `datasets/Olist.Data.Dictionary.2.pdf` for complete field descriptions.
 
 | Field Prefix | Table |
-|-------------|-------|
+|---|---|
 | `customer_*` | Customers |
 | `geolocation_*` | Geolocation |
 | `order_*` | Orders |
@@ -201,3 +262,13 @@ See `datasets/Olist.Data.Dictionary.2.pdf` for complete field descriptions.
 | `review_*` | Reviews |
 | `product_*` | Products |
 | `seller_*` | Sellers |
+
+---
+
+<div align="center">
+
+**Built by Varun · S.B. Jain Institute of Technology, Management & Research · 2026**
+
+*Olist public dataset · Power BI · Python · SQL Server*
+
+</div>
